@@ -1,174 +1,797 @@
-# Solitaire Crush Prototype Spec
+# Match Kings — Game Spec v1
 
-## Overview
-Single-player, mobile-first card puzzle game inspired by Buraco sequences with match-style dynamics. Players move cards on a 7×7 grid to form and clear sequences, score points, and avoid filling the board.
+## 1. Overview
 
----
+Match Kings is a single-player, mobile-first card puzzle game built on a 7×7 grid.
 
-## Core Objective
-- Score points by forming and clearing valid sequences.
-- The game ends only when a card drop is required and there is no empty slot available. If a clear opens space, play continues normally even if the grid was previously full.
+The board starts full of cards. The player selects two cards and, if the move is legal, merges them into a single higher-value card placed in the second selected card’s slot. The first selected card’s slot becomes empty. Over time, the player tries to create Kings, then merge Kings together to clear them from the board.
 
----
+The puzzle goal is to clear the entire board.
 
-## Board & Cards
-- **Grid:** 7×7.
-- **Initial state:** Bottom 3 rows filled; top 4 rows empty.
-- **Deck:** Two standard decks (108 cards).
-- **Deck flow:** Shuffle once and deal in order. When depleted, generate a new 108-card deck, tag specials, shuffle, continue from current grid state (no reset).
-- **Special tagging:** Each new deck contains 20 total special cards: 10 bomb cards and 10 swapper cards. No card can be tagged as both.
+This prototype is focused on validating the core puzzle loop only:
 
----
+no score
 
-## Sequences (Valid Matches)
-### Rules
-- **Only rank sequences** (no same-rank sets).
-- **Length:** Minimum 3, maximum 7 (grid size).
-- **Direction:** Horizontal or vertical.
-- **Order:** Ascending or descending allowed.
-- **Suit:** Must be the same suit throughout the sequence.
-- **Consecutive ranks required:** Examples:  
-  - Valid: `A-K-Q`, `Q-K-A`, `5-6-7`
-  - Invalid: `5-6-8`, `10-9-7`
-- Allowed sequences exist within `A-2-3-4-5-6-7-8-9-10-J-Q-K-A`. `K-A-2` is invalid.
+no boosters/specials in play
 
-### Ace
-Ace can be used at **either end** of a sequence (A-2-3 or Q-K-A).
+no gravity
 
-### Jokers / 2s
-- Jokers and 2s can act as wilds.
-- **Only 1 wildcard per sequence.**
-- A 2 can be natural (as “2”), in which case another Joker or 2 may be used as the single wildcard in the same sequence.
-- Example intent: `A-2-3-4-2` is valid (one natural 2 and one wildcard 2). `A-2-2-4` is valid if the second 2 substitutes a 3. `3-4-2-2` and `3-4-2-C` (C = Joker) are invalid.
+no persistence
 
----
+no hints
 
-## Player Actions
-### Move (Primary Interaction)
-- **Tap card A, tap orthogonally adjacent card B → swap positions.**
-- Only 1-tile moves (up, down, left, right).
-- If move is illegal (not adjacent), it fails (no state change).
-- If a card moves from under other cards **into an empty slot**, the cards previously above it fall down by one slot.
+no tutorial
 
-### Select & Clear Sequence
-- Player drags to select **one** sequence.
-- Double tap to clear the selected sequence.
-- Clearing removes the cards; cards above fall by `sequence_length` slots (gravity).
-  - **Vertical clear:** Cards above fall by the cleared length.
-  - **Horizontal clear:** Cards above each cleared card fall by 1 slot (one per affected column). Example: clearing (0,0)-(0,2) drops all cards in columns 0–2 down by one row.
-- After any removal, affected columns collapse to fill empty slots below (no gaps remain within a column).
-- Invalid selections are rejected on release; subsequences inside invalid selections do not count.
-- Selection shape is a straight orthogonal line only. The selection grows or shrinks only along the vector defined by the first two legal tiles.
+## 2. Core Objective
 
----
+The player wins by clearing all cards from the board.
 
-## Spawning / Card Drops
-- **Exactly one card drops** after each move or clear (including swaps and bombs).
-- The card lands in a **random empty slot** in the **lowest row that has at least one empty slot**.
+The player loses only if:
 
----
+the Draw pile is empty
 
-## Scoring
-### Base Value
-- **Base factor starts at 10.**
-- Score = `sequence_length × base_factor × chain_multiplier × canastra_bonus`.
-- Base factor increases by +1 **after every sequence cleared** (global, persistent for the run).
+there are still cards remaining on the board
 
-### Chain Multiplier
-- If the player clears sequences **back-to-back** without any non-clear action in between, apply a chain multiplier:
-  - 1st clear: ×1
-  - 2nd clear: ×2
-  - 3rd clear: ×3
-  - ...and so on.
-- Any move, swap, or bomb **resets the chain** to ×1.
+and there are no legal merges remaining
 
-### Canastra (Length 7)
-- **Clean canastra** (no jokers): **double the base value**.
+If the board becomes empty at any point, the player wins immediately, regardless of how many cards remain in the Draw pile.
 
-### Example
-Three consecutive clears of lengths 3, 5, 4 with no moves between:
-- `3 × 10 × 1`
-- `5 × 11 × 2`
-- `4 × 12 × 3`
-Note: Base increments immediately after scoring the current sequence.
+## 3. Board Setup
 
----
+### Grid
 
-## Special Cards
-### Swapper Cards (10 per 108)
-- Tagged in the UI.
-- Tap a swapper, then tap any other card → swap positions.
-- After use, **only the tapped swapper** loses special status.
-- Swapping with a bomb does not alter the bomb status.
-- Swapping with another swapper does not remove the other swapper’s status.
-- Adjacent swapper cards moved via normal 1-tile swap do **not** lose swapper status.
-- Swappers can participate in sequences as their normal rank/suit; if cleared in a sequence they are removed like any other card.
+Board size: 7×7
 
-### Free Swaps (3 total)
-- Tap “Swap” button, then select two cards to swap.
-- Uses one charge; no replenishment in the prototype.
+### Initial Board State
 
-### Bomb Cards (10 per 108)
-- Tagged in the UI.
-- Double tap bomb to clear itself only (no splash).
-- Bomb clear yields **no points**.
-- Bombs can participate in sequences as their normal rank/suit; if cleared in a sequence they are removed like any other card.
+All 49 slots are filled at level start.
 
-### Free Bombs (3 total)
-- Tap “Bomb” button, then double tap any card to clear it.
-- Uses one charge; no replenishment in the prototype.
+### Visual State
 
-### Bomb vs Sequence
-- If a bomb is cleared via sequence selection, it does **not** trigger its bomb effect.
-- If the bomb is double-tapped first, it triggers normally.
+Empty slots remain visible as part of the table layout, but should fade into the felt/table background rather than feeling like broken holes.
 
----
+If a new card is drawn into an empty slot, that slot should visually fade back in as occupied.
 
-## Input & UX
-- **Mobile-only.**
-- Primary interaction: tap adjacent cards to swap.
-- Sequence selection: drag to select, then double tap to clear.
-- No hints or tutorial for the prototype.
-- Prototype loads directly into an active match (no main menu/lobby screen).
+## 4. Cards
 
----
+### 4.1 Card Set
 
-## Persistence
-No persistence in the prototype (scores and stats are not saved).
+Use traditional playing card visuals already present in the Solitaire Crush project.
 
----
+Included suits:
 
-## Systems Plan (Prototype Architecture)
-### State Model
-- **Grid:** 7×7 array of card objects or empty.
-- **Deck:** current shuffled 108-card stack (replenishes when empty).
-- **Special inventory:** `freeSwapCount = 3`, `freeBombCount = 3`.
-- **Scoring:** `baseFactor = 10`, `chainMultiplier = 1`, `totalScore`.
-- **Run status:** `gameOver` boolean.
+Spades
 
-### Core Modules
-- **Deck Manager:** builds deck, tags 10 swapper + 10 bomb cards (no overlap), shuffles, and deals.
-- **Grid Manager:** handles swaps, clears, gravity, and spawn placement in lowest available row.
-- **Sequence Validator:** validates straight-line selections against suit + rank rules and joker limits.
-- **Scoring Engine:** applies base factor, chain multiplier, and clean canastra bonus.
-- **Input Controller:** maps taps/drag/double-tap to swaps, selections, clears, and specials.
-- **UI Layer:** renders grid, selection highlights, special icons, score, and inventory counts.
+Clubs
 
-### Critical Flows
-- **Move flow:** swap adjacent cards → resolve gravity (if empty slots) → spawn 1 card → check game over.
-- **Clear flow:** validate selection → remove cards → resolve gravity → update score and counters → spawn 1 card → check game over.
-- **Bomb flow:** clear single card → resolve gravity → spawn 1 card → reset chain.
+Hearts
 
----
+Diamonds
 
-## Asset & UI Checklist (Prototype)
-### Immediate Placeholders
-- Text card labels (e.g., “A♠”, “9♥”) for early logic validation.
-- Simple button states for Swap and Bomb (enabled/disabled).
+Included ranks:
 
-### Near-Term Art Needs
-- **Card faces:** 52 unique cards (can be reused across both decks).
-- **Card back:** single asset.
-- **Special overlays:** swapper icon, bomb icon.
-- **Buttons:** swap and bomb (pressed/unpressed/disabled).
-- **Selection VFX:** highlight outline and clear animation.
+Ace
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+Jack
+
+Queen
+
+King
+
+Excluded:
+
+No Jokers
+
+No special cards active in gameplay for this prototype
+
+### 4.2 Suit Color Groups
+
+Legal merge matching is based on suit color, not exact suit:
+
+Red group: Hearts + Diamonds
+
+Black group: Spades + Clubs
+
+This means:
+
+Heart can merge with Diamond
+
+Spade can merge with Club
+
+Red cannot merge with Black
+
+### 4.3 Rank Values
+
+For merge calculations, card values map as:
+
+Ace = 1
+
+2 = 2
+
+3 = 3
+
+4 = 4
+
+5 = 5
+
+6 = 6
+
+7 = 7
+
+8 = 8
+
+9 = 9
+
+10 = 10
+
+Jack = 11
+
+Queen = 12
+
+King = 13
+
+## 5. Legal Merge Rules
+
+### 5.1 General Merge Legality
+
+A merge is legal if:
+
+both selected cards currently exist on the board
+
+both cards are of the same suit color group
+
+the move obeys the King exception rules below
+
+Important
+
+Distance does not matter
+
+Adjacency does not matter
+
+Card position does not affect legality
+
+Empty slots cannot be selected as merge targets
+
+### 5.2 Normal Merge Rule
+
+Any two non-King cards of the same suit color may be merged.
+
+Examples:
+
+4♦ + 5♥ = legal
+
+9♣ + 2♠ = legal
+
+7♥ + 10♣ = illegal
+
+### 5.3 King Exception Rule
+
+Kings have special merge behavior:
+
+A King may only merge with another King
+
+Any King may merge with any other King regardless of suit or suit color
+
+Examples:
+
+K♥ + K♦ = legal
+
+K♠ + K♣ = legal
+
+K♥ + K♣ = legal
+
+K♥ + 3♥ = illegal
+
+K♣ + Q♠ = illegal
+
+## 6. Merge Result Rules
+
+### 6.1 Destination Slot
+
+When two cards merge:
+
+the second selected card’s slot becomes the result slot
+
+the first selected card disappears
+
+the first selected card’s slot becomes empty
+
+### 6.2 Result Suit
+
+The resulting card always takes the suit of the second selected card.
+
+Examples:
+
+Tap 4♦ then 5♥ → result appears as 9♥
+
+Tap 5♥ then 4♦ → result appears as 9♦
+
+### 6.3 Result Rank
+
+Use cyclical addition over the 1–13 rank sequence:
+
+Ace, 2, 3, 4, 5, 6, 7, 8, 9, 10, Jack, Queen, King, then back to Ace.
+
+Equivalent formula:
+
+((A + B - 1) mod 13) + 1
+
+Examples:
+
+4 + 5 = 9
+
+9 + 2 = Jack
+
+8 + 5 = King
+
+Jack + 3 = Ace
+
+Queen + 2 = Ace
+
+King + King = special clear case, not normal rank output
+
+### 6.4 King + King Clear
+
+If two Kings are merged:
+
+both Kings disappear
+
+both involved board slots become empty
+
+no replacement card is created
+
+For animation/VFX purposes, the second selected slot is the main presentation anchor.
+
+## 7. Board Behavior After Merge
+
+There is no gravity in Match Kings.
+
+After any merge:
+
+empty slots remain where they are
+
+cards do not fall
+
+cards do not slide
+
+columns do not collapse
+
+no automatic refill occurs
+
+The only way a new card enters the board is via Draw.
+
+This is a deliberate departure from the original Solitaire Crush prototype, which uses gravity, collapse, and automatic card drops after actions.
+
+GAME_SPEC
+
+## 8. Draw System
+
+### 8.1 Draw Pile
+
+Each level starts with a 10-card Draw pile.
+
+The remaining Draw count must always be visible to the player.
+
+### 8.2 When Draw Can Be Used
+
+The player may use Draw at any time, as long as:
+
+the Draw pile still has cards remaining
+
+and at least one empty slot exists on the board
+
+Draw is not restricted to “no moves available” situations. It is a strategic tool.
+
+### 8.3 Blocked Draw
+
+If the player taps Draw and there are no empty slots:
+
+Draw does not happen
+
+no card is consumed
+
+show message in the existing lower-left instruction text area:
+
+“There are no empty slots!”
+
+### 8.4 Draw Placement
+
+When Draw is used:
+
+consume 1 card from the Draw pile
+
+choose one empty slot at random
+
+all empty slots have equal probability
+
+place the drawn card into that slot
+
+### 8.5 Draw Animation
+
+The drawn card should animate:
+
+from the Draw pile UI
+
+into the selected empty slot
+
+## 9. Random Generation
+
+### 9.1 Level Seed Model
+
+Each level should be generated as a prebuilt level seed at start.
+
+That seed contains:
+
+initial 7×7 board contents
+
+10-card Draw pile contents
+
+This is preferred over purely on-demand random generation because it gives reproducibility for debugging, balancing, and design iteration.
+
+### 9.2 Rank Probability
+
+Generation is fully random, except for a reduced King chance.
+
+Rank odds
+
+King: 2%
+
+All other 12 ranks combined: 98%, evenly distributed
+
+So each non-King rank has:
+
+98% / 12 = 8.166666...%
+
+### 9.3 Suit Probability
+
+Suit selection is uniform:
+
+Spades: 25%
+
+Clubs: 25%
+
+Hearts: 25%
+
+Diamonds: 25%
+
+### 9.4 Joker Rule
+
+Jokers are never generated
+
+not on the board
+
+not in the Draw pile
+
+### 9.5 Solvability
+
+For prototype v1:
+
+no need to guarantee solvability
+
+no need to solver-check boards
+
+no need to guarantee strong puzzle quality beyond rule correctness
+
+## 10. Win / Loss Logic
+
+### 10.1 Win Check
+
+Check for win whenever board state changes.
+
+If all board slots are empty, player wins immediately.
+
+### 10.2 Loss Check
+
+Loss only matters when:
+
+Draw pile is empty
+
+and the board is not empty
+
+At that point, determine whether any legal merge remains.
+
+If no legal merges remain, player loses.
+
+If legal merges still exist, play continues.
+
+### 10.3 Legal Move Detection
+
+A legal move exists if either:
+
+there are at least two non-King cards of the same color group anywhere on the board
+
+or there are at least two Kings anywhere on the board
+
+Because:
+
+non-Kings require same-color matching
+
+Kings can merge with any Kings regardless of suit color
+
+This check should be implemented explicitly for end-state validation.
+
+## 11. Input & Controls
+
+The current Solitaire Crush prototype is already mobile-first and already has an input/controller layer that can be repurposed for this interaction model.
+
+GAME_SPEC
+
+### 11.1 Primary Input
+
+Primary merge input:
+
+tap card A
+
+tap card B
+
+if legal, execute merge
+
+### 11.2 Drag Input
+
+Also support:
+
+drag card A
+
+release over card B
+
+if targeting is valid, execute merge
+
+### 11.3 Drag Snap Rule
+
+For drag-to-merge targeting:
+
+if dragged card overlaps target card area by 66% or more, snap/resolve to that target
+
+otherwise do not merge
+
+### 11.4 Selection Behavior
+
+When first card is selected:
+
+highlight it clearly
+
+wait for second selection or cancellation
+
+### 11.5 Cancel Behavior
+
+A pending selection can be canceled by:
+
+tapping the selected card again
+
+tapping outside the cards / on non-card space
+
+### 11.6 Invalid Target Behavior
+
+If card A is selected and player taps an invalid card B:
+
+show invalid feedback on B only
+
+do not keep A selected
+
+return immediately to neutral state
+
+## 12. UX Feedback
+
+### 12.1 Legal Selection Feedback
+
+For v1, selection should be readable and calm:
+
+clear selection highlight
+
+keep prototype tabletop tone
+
+no hints
+
+### 12.2 Invalid Move Feedback
+
+For invalid target selection:
+
+red highlight on target card
+
+tiny shake on target card
+
+No sound.
+No haptics.
+No ambient motion.
+
+### 12.3 Visual Clarity Priorities
+
+Since rules are based on red vs black suit grouping, readability should emphasize suit color strongly enough for play comprehension, while still using normal playing card visuals.
+
+Do not over-engineer extra color-group UI treatment in v1 unless playtesting reveals confusion.
+
+## 13. Merge Animation Rules
+
+### 13.1 Normal Merge Animation
+
+When a valid non-King merge happens:
+
+first selected card resolves away
+
+second selected card begins rank-up transformation
+
+card face transitions through +1 rank increments until final value is reached
+
+use full card-face swaps for each intermediate rank
+
+at final card:
+
+slight lift toward the player
+
+360 horizontal flip
+
+soft settle back down
+
+Tone target:
+
+satisfying
+
+polished
+
+still calm / tabletop, not arcade-heavy
+
+### 13.2 King Creation Animation
+
+If a merge result becomes a King:
+
+apply a gold rim glow from the start of the rank-up sequence until the end
+
+then finish with:
+
+slight upward lift
+
+360 horizontal flip
+
+soft settle/bounce
+
+subtle crown/sparkle accent if easy to implement
+
+The key design goal is that the player immediately understands:
+“I created something important.”
+
+### 13.3 King + King Clear Animation
+
+When two Kings merge:
+
+both vanish
+
+use a more celebratory royal burst effect
+
+anchor presentation around the second selected slot
+
+can later be upgraded into a more screen-centered special VFX pass
+
+Prototype tone should still remain readable and not overly noisy.
+
+## 14. UI Requirements
+
+### 14.1 Required UI
+
+7×7 board
+
+card visuals
+
+selection highlight
+
+Draw button
+
+Draw pile remaining count badge
+
+lower-left instructional / system text area
+
+restart button
+
+win screen
+
+loss screen
+
+next level button after win
+
+retry button after loss
+
+### 14.2 Level Flow
+
+Prototype is level-based.
+
+For v1:
+
+completing a level goes to another randomized level using the same rules
+
+losing allows retry
+
+restart should also be available during play
+
+No menu/lobby required for prototype.
+
+## 15. Systems / State Model
+
+Suggested prototype state:
+
+grid[7][7] → card or empty
+
+drawPile[] → prebuilt 10-card list
+
+selectedCard → optional board position/card ref
+
+gameState → playing / win / lose
+
+messageText → lower-left feedback string
+
+levelSeed → seed or generated payload used to build initial board + draw pile
+
+Each card should minimally store:
+
+rank
+
+suit
+
+color group
+
+board position
+
+No score state needed.
+No special inventory needed.
+No deck regeneration needed.
+
+This is much simpler than the current Solitaire Crush prototype state model, which includes deck flow, special inventory, score, chain multiplier, and gravity-driven move resolution.
+
+GAME_SPEC
+
+## 16. Implementation Notes vs Solitaire Crush
+
+The forked Solitaire Crush codebase should be adapted as follows:
+
+### 16.1 Keep / Reuse
+
+Likely reusable:
+
+grid rendering
+
+card visuals
+
+card prefab/view setup
+
+input controller shell
+
+UI layer shell
+
+mobile-first layout
+
+general table/felt presentation
+
+These are all aligned with the current prototype architecture.
+
+GAME_SPEC
+
+### 16.2 Remove / Bypass
+
+Disable or remove from active gameplay:
+
+sequence validator
+
+sequence drag-clear logic
+
+adjacency swap move loop
+
+gravity resolution
+
+column collapse
+
+spawn-in-lowest-row flow
+
+score system
+
+chain multiplier
+
+bomb behavior
+
+swapper behavior
+
+free swap/free bomb inventory
+
+deck depletion/rebuild gameplay loop
+
+joker logic
+
+wildcard 2 logic
+
+These belong to the original Solitaire Crush prototype rules and should not drive Match Kings v1.
+
+GAME_SPEC
+
+### 16.3 Hide, Don’t Destroy
+
+Special-card-related code can remain in the codebase but should be:
+
+disabled
+
+hidden from UI
+
+commented or isolated clearly
+
+Reason:
+you may revisit specials later in the prototype.
+
+## 17. Prototype Success Criteria
+
+This prototype succeeds if it answers:
+
+Is the merge loop understandable?
+
+Is creating Kings satisfying?
+
+Is King-clearing satisfying?
+
+Is the Draw system strategically interesting?
+
+Does the game feel fun enough to justify deeper balancing and puzzle design later?
+
+It does not need to prove:
+
+long-term economy
+
+progression
+
+scoring
+
+puzzle solvability guarantees
+
+production UX polish
+
+final art direction
+
+## 18. Non-Goals for v1
+
+Do not spend time in v1 on:
+
+hints
+
+tutorialization
+
+audio
+
+haptics
+
+advanced VFX polish
+
+progression curves
+
+mathematically curated boards
+
+deck realism balancing
+
+score systems
+
+live ops or persistence
+
+Validate fun first.
+
+If you want, the next best artifact is a Codex implementation brief that turns this into:
+
+core classes/modules to edit
+
+pseudocode for merge resolution
+
+legal move detection logic
+
+level seed generator logic
+
+UI event flow for tap and drag interactions

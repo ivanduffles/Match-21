@@ -3,119 +3,72 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Solitaire Crush Prototype</title>
+    <title>Match Kings</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="app">
-      <header class="hud">
-        <div class="topbar-left">
-          <div class="hud__score">
-            <span class="hud__label">Score</span>
-            <span id="scoreValue">0</span>
-          </div>
+      <header class="hero">
+        <div class="hero__copy">
+          <p class="hero__eyebrow">Royal Table Puzzle</p>
+          <h1 class="hero__title">Match Kings</h1>
         </div>
-        <div class="topbar-right">
-          <div class="hud__counts">
-            <button class="hud__button hud__button--powerup" id="freeSwapButton" type="button" aria-label="Use free swap">
-              <span class="hud__button-amount" aria-label="Free swaps remaining"><span id="freeSwapCount">3</span></span>
-              <span class="hud__icon hud__icon--swap" aria-hidden="true"></span>
-            </button>
-            <button class="hud__button hud__button--powerup" id="freeBombButton" type="button" aria-label="Use free bomb">
-              <span class="hud__button-amount" aria-label="Free bombs remaining"><span id="freeBombCount">3</span></span>
-              <span class="hud__icon hud__icon--bomb" aria-hidden="true"></span>
-            </button>
+
+        <div class="hero__controls">
+          <div class="hero__pill" aria-label="Current level">
+            <span class="hero__pill-label">Level</span>
+            <span class="hero__pill-value" id="levelValue">1</span>
           </div>
-        
-          <button
-            class="hud__button hud__menu-button"
-            id="menuBtn"
-            type="button"
-            aria-haspopup="dialog"
-            aria-controls="gameMenuModal"
-            aria-label="Open game menu"
-          >
-            ☰
+
+          <button class="chrome-button" id="restartButton" type="button">
+            Restart
           </button>
         </div>
       </header>
 
-      <section class="board-viewport" aria-label="Board viewport">
-        <section class="board" id="board" aria-label="Game board"></section>
+      <section class="tableau" aria-label="Game table">
+        <div class="tableau__frame">
+          <section class="board" id="board" aria-label="Match Kings board"></section>
+        </div>
       </section>
 
-      <footer class="status">
-        <div class="status__left" aria-label="History controls">
-          <button class="hud__button hud__button--history" id="undoButton" type="button" aria-label="Undo">⟲</button>
-          <button class="hud__button hud__button--history" id="redoButton" type="button" aria-label="Redo">⟳</button>
-        </div>
-        <div class="status__middle" id="statusMessage">Tap adjacent cards to swap. Tap again to deselect.</div>
-        <div class="status__right">
-          <button class="clear-button" id="clearSequenceButton" type="button" hidden>Clear</button>
-        </div>
+      <footer class="control-bar">
+        <section class="status-panel" aria-label="Instruction panel">
+          <span class="status-panel__label">Table Talk</span>
+          <p class="status-panel__message" id="statusMessage" aria-live="polite">
+            Tap a card, then tap another card of the same color group.
+          </p>
+        </section>
+
+        <section class="draw-panel" aria-label="Draw pile">
+          <span class="draw-panel__label">Draw Pile</span>
+          <button class="draw-button" id="drawButton" type="button">
+            <span class="draw-button__stack" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
+            <span class="draw-button__text">Draw</span>
+            <span class="draw-button__count" id="drawCount">10</span>
+          </button>
+        </section>
       </footer>
     </main>
 
-    <div class="menu-modal" id="gameMenuModal" hidden>
-      <button
-        type="button"
-        class="menu-modal__overlay"
-        id="menuOverlay"
-        aria-label="Close menu"
-      ></button>
+    <div class="endgame" id="endgameOverlay" hidden>
+      <div class="endgame__scrim" aria-hidden="true"></div>
       <section
-        class="menu-modal__panel"
+        class="endgame__panel"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="menuTitle"
+        aria-labelledby="endgameTitle"
       >
-        <header class="menu-modal__header">
-          <h2 id="menuTitle">Game Menu</h2>
-          <button type="button" class="hud__button" id="closeMenuBtn" aria-label="Close menu">
-            Close
-          </button>
-        </header>
-        <div class="menu-modal__content">
-          <section>
-            <h3>How to play</h3>
-            <ul>
-              <li>Swap orthogonally adjacent cards to make better sequence opportunities.</li>
-              <li>
-                Build a straight line (horizontal or vertical) of 3 to 7 cards in ascending or
-                descending rank order.
-              </li>
-              <li>
-                A valid sequence must stay in one suit, with at most one wildcard (Joker or an
-                extra 2 acting as wildcard).
-              </li>
-              <li>
-                When your selection is valid, double tap a selected card (or use the Clear button)
-                to clear and score.
-              </li>
-            </ul>
-          </section>
-          <section>
-            <h3>Scoring</h3>
-            <p>
-              Sequence score = sum of cleared card base values × combo multiplier (clean 7-card
-              sequence doubles the result).
-            </p>
-            <p><strong>Any Card = 10 points</strong></p>
-            <p>
-              Combo chain: clearing again without making a move increases multiplier (x1, x2, x3…)
-              and any move/swap/bomb action resets combo back to x1.
-            </p>
-          </section>
-        </div>
-      </section>
-    </div>
-
-    <div class="game-over" id="gameOverOverlay" hidden>
-      <div class="game-over__scrim" aria-hidden="true"></div>
-      <section class="game-over__panel" role="dialog" aria-modal="true" aria-labelledby="gameOverTitle">
-        <h2 id="gameOverTitle">Game Over</h2>
-        <p>No space for new cards.</p>
-        <button type="button" id="playAgainButton" aria-label="Play again">Play again</button>
+        <p class="endgame__eyebrow" id="endgameEyebrow">Victory</p>
+        <h2 class="endgame__title" id="endgameTitle">Board Cleared</h2>
+        <p class="endgame__body" id="endgameBody">You cleared the table.</p>
+        <button class="chrome-button chrome-button--primary" id="endgameActionButton" type="button">
+          Next Level
+        </button>
       </section>
     </div>
 
