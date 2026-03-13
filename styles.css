@@ -488,6 +488,10 @@ button {
   padding: 24px;
 }
 
+.endgame[hidden] {
+  display: none;
+}
+
 .endgame__scrim {
   position: absolute;
   inset: 0;
