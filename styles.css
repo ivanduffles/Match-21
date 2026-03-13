@@ -100,8 +100,6 @@ button {
 }
 
 .hero__eyebrow,
-.status-panel__label,
-.draw-panel__label,
 .endgame__eyebrow,
 .hero__pill-label {
   display: block;
@@ -130,16 +128,11 @@ button {
   justify-content: flex-end;
 }
 
-.hero__pill,
-.status-panel,
-.draw-panel {
+.hero__pill {
   border: 1px solid var(--panel-border);
   background: linear-gradient(180deg, rgba(13, 34, 25, 0.72), rgba(8, 23, 17, 0.66));
   box-shadow: var(--shadow-soft);
   backdrop-filter: blur(12px);
-}
-
-.hero__pill {
   min-width: 72px;
   padding: 7px 10px;
   border-radius: 14px;
@@ -388,29 +381,18 @@ button {
 }
 
 .control-bar {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 14px;
-  align-items: end;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.status-panel {
-  min-height: 88px;
-  padding: 14px 16px 15px;
-  border-radius: 18px;
-}
-
-.status-panel__message {
-  margin: 7px 0 0;
+.status-line {
+  margin: 0;
   font-size: clamp(14px, 2.8vw, 16px);
-  line-height: 1.45;
+  line-height: 1.35;
   color: #fff7e7;
-}
-
-.draw-panel {
-  padding: 12px;
-  border-radius: 20px;
-  justify-self: end;
+  max-width: 62ch;
 }
 
 .draw-button {
@@ -642,30 +624,21 @@ button {
   }
 
   .control-bar {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .draw-panel {
-    justify-self: stretch;
-    padding: 10px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
   }
 
   .draw-button {
     width: 100%;
-    min-height: 62px;
-    padding: 10px 14px;
-    gap: 10px;
+    min-height: 56px;
+    padding: 8px 12px;
+    gap: 8px;
   }
 
-  .status-panel {
-    min-height: 64px;
-    padding: 10px 12px;
-  }
-
-  .status-panel__message {
-    margin-top: 5px;
-    line-height: 1.3;
+  .status-line {
+    font-size: 13px;
+    line-height: 1.25;
   }
 }
 
@@ -698,15 +671,15 @@ button {
     font-size: 13px;
   }
 
-  .status-panel {
-    min-height: 60px;
-    padding: 10px 12px;
+  .status-line {
+    font-size: 13px;
+    line-height: 1.2;
   }
 
   .draw-button {
-    min-height: 56px;
-    padding: 9px 14px;
-    gap: 10px;
+    min-height: 50px;
+    padding: 7px 12px;
+    gap: 8px;
   }
 }
 
@@ -716,8 +689,6 @@ button {
   }
 
   .hero__eyebrow,
-  .draw-panel__label,
-  .status-panel__label,
   .hero__pill-label {
     font-size: 9px;
     letter-spacing: 0.13em;
@@ -727,13 +698,8 @@ button {
     font-size: clamp(20px, 6vw, 30px);
   }
 
-  .status-panel {
-    min-height: 52px;
-    padding: 8px 10px;
-  }
-
-  .status-panel__message {
-    font-size: 13px;
-    margin-top: 4px;
+  .status-line {
+    font-size: 12px;
+    line-height: 1.2;
   }
 }
