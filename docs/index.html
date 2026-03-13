@@ -33,25 +33,19 @@
       </section>
 
       <footer class="control-bar">
-        <section class="status-panel" aria-label="Instruction panel">
-          <span class="status-panel__label">Table Talk</span>
-          <p class="status-panel__message" id="statusMessage" aria-live="polite">
-            Tap a card, then tap another card of the same color group.
-          </p>
-        </section>
+        <p class="status-line" id="statusMessage" aria-live="polite">
+          Tap a card, then tap another card of the same color group.
+        </p>
 
-        <section class="draw-panel" aria-label="Draw pile">
-          <span class="draw-panel__label">Draw Pile</span>
-          <button class="draw-button" id="drawButton" type="button">
-            <span class="draw-button__stack" aria-hidden="true">
-              <span></span>
-              <span></span>
-              <span></span>
-            </span>
-            <span class="draw-button__text">Draw</span>
-            <span class="draw-button__count" id="drawCount">10</span>
-          </button>
-        </section>
+        <button class="draw-button" id="drawButton" type="button" aria-label="Draw from pile">
+          <span class="draw-button__stack" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+          <span class="draw-button__text">Draw</span>
+          <span class="draw-button__count" id="drawCount">10</span>
+        </button>
       </footer>
     </main>
 
