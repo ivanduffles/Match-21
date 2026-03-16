@@ -431,7 +431,6 @@ function createCardFaceMarkup(card) {
   return `
     <span class="card-face__corner card-face__corner--top" aria-hidden="true">
       <span class="card-face__rank">${rankLabel}</span>
-      <span class="card-face__small-suit">${suitSvg}</span>
     </span>
     <span class="card-face__center" aria-hidden="true">
       <span class="card-face__large-suit">${suitSvg}</span>
@@ -439,7 +438,6 @@ function createCardFaceMarkup(card) {
     </span>
     <span class="card-face__corner card-face__corner--bottom" aria-hidden="true">
       <span class="card-face__rank">${rankLabel}</span>
-      <span class="card-face__small-suit">${suitSvg}</span>
     </span>
   `;
 }
