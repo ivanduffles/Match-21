@@ -7,11 +7,9 @@ const INVALID_FEEDBACK_MS = 360;
 const DEFAULT_MESSAGE = "Tap a card, then tap another card of the same color group.";
 const DRAW_RANDOM_SALT = 0x9e3779b9;
 
-const SUITS = ["S", "C", "H", "D"];
+const SUITS = ["S", "D"];
 const SUIT_META = {
   S: { name: "Spades", colorGroup: "black" },
-  C: { name: "Clubs", colorGroup: "black" },
-  H: { name: "Hearts", colorGroup: "red" },
   D: { name: "Diamonds", colorGroup: "red" },
 };
 
@@ -26,16 +24,6 @@ const SUIT_SVGS = {
   S: (color) => `
     <svg viewBox="0 0 100 100" aria-hidden="true">
       <path fill="${color}" d="M68.4184 78.3851C76.0354 78.0722 83.1066 73.9177 87.0458 67.3777C93.8373 56.104 90.1238 44.824 82.8949 38.1044L53.3699 9.82519C51.705 8.29785 49.1525 8.29785 47.4875 9.82519L17.533 38.1044C10.5051 44.6366 7.50581 55.483 13.3774 66.4407C17.1046 73.3974 24.1945 78.0847 32.0681 78.3883C37.1961 78.585 42.3046 76.8686 45.2744 74.0912C46.0551 73.36 45.9055 74.9277 45.9055 80.2439C45.9055 83.788 43.731 87.0411 39.382 90.003C38.7947 91.0362 39.5383 92.3203 40.7255 92.3203L60.132 92.3203C61.3194 92.3203 62.0644 91.0362 61.4754 90.003C57.0808 86.1139 54.8835 82.8608 54.8835 80.2439C54.8835 76.3185 54.7839 73.3507 55.5368 74.0788C58.4247 76.8748 63.2456 78.5988 68.4184 78.3851Z"/>
-    </svg>
-  `,
-  C: (color) => `
-    <svg viewBox="0 0 100 100" aria-hidden="true">
-      <path fill="${color}" d="M76.6132 41.2938C72.3168 39.2675 68.3043 39.219 64.6552 40.1174C67.628 36.5443 69.3396 31.8551 69.0717 26.7525C68.5619 17.0285 60.5948 9.06609 51.013 8.694C40.2801 8.27787 31.4498 16.9887 31.4498 27.795C31.4498 32.493 33.1253 36.7882 35.8939 40.1172C32.2448 39.2188 28.2323 39.2673 23.9359 41.2936C17.3226 44.4139 12.7207 51.0176 12.6266 58.4213C12.492 69.0953 20.9703 77.7899 31.4498 77.7899C36.5137 77.7899 41.0996 75.7504 44.4823 72.4479V78.0797C44.4823 80.7809 43.7886 83.435 42.468 85.7803L39.9281 90.2946C39.3765 91.2753 40.0744 92.4944 41.1851 92.4944H59.364C60.4762 92.4944 61.1726 91.2755 60.6209 90.2946L58.0811 85.7803C56.7619 83.435 56.0668 80.7809 56.0668 78.0797V72.4479C59.4509 75.7505 64.0368 77.7899 69.0992 77.7899C79.5788 77.7899 88.0585 69.0953 87.9225 58.4213C87.8283 51.0176 83.2263 44.4139 76.6132 41.2938Z"/>
-    </svg>
-  `,
-  H: (color) => `
-    <svg viewBox="0 0 64 64" aria-hidden="true">
-      <path fill="${color}" d="M32 58C16 44 6 34 6 22 6 14 12 8 20 8c6 0 10 3 12 7 2-4 6-7 12-7 8 0 14 6 14 14 0 12-10 22-26 36Z"/>
     </svg>
   `,
   D: (color) => `
@@ -333,6 +321,20 @@ function getRankTransitionValues(startValue, endValue) {
 
 function isBoardEmpty() {
   return state.grid.every((row) => row.every((card) => card === null));
+}
+
+
+function getActiveBoardSuits() {
+  const suits = new Set();
+  for (let row = 0; row < GRID_SIZE; row += 1) {
+    for (let col = 0; col < GRID_SIZE; col += 1) {
+      const card = state.grid[row][col];
+      if (card) {
+        suits.add(card.suit);
+      }
+    }
+  }
+  return Array.from(suits);
 }
 
 function getEmptyCells() {
@@ -1007,9 +1009,15 @@ async function handleDraw() {
   renderBoard();
   await nextFrame();
 
+  const activeSuits = getActiveBoardSuits();
   const targetIndex = Math.floor(state.drawPlacementRng() * emptyCells.length);
   const targetPos = emptyCells[targetIndex];
   const card = state.drawPile.shift();
+
+  if (activeSuits.length > 0 && !activeSuits.includes(card.suit)) {
+    card.suit = activeSuits[Math.floor(state.drawPlacementRng() * activeSuits.length)];
+    card.colorGroup = SUIT_META[card.suit].colorGroup;
+  }
 
   state.inputLocked = true;
   renderHud();
