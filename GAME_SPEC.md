@@ -62,10 +62,6 @@ Included suits:
 
 Spades
 
-Clubs
-
-Hearts
-
 Diamonds
 
 Included ranks:
@@ -104,17 +100,19 @@ No special cards active in gameplay for this prototype
 
 ### 4.2 Suit Color Groups
 
-Legal merge matching is based on suit color, not exact suit:
+Legal merge matching is based on suit color, not exact suit.
 
-Red group: Hearts + Diamonds
+In this prototype there is one suit per color group:
 
-Black group: Spades + Clubs
+Red group: Diamonds
+
+Black group: Spades
 
 This means:
 
-Heart can merge with Diamond
+Diamonds can only merge with Diamonds
 
-Spade can merge with Club
+Spades can only merge with Spades
 
 Red cannot merge with Black
 
@@ -318,6 +316,10 @@ When Draw is used:
 
 consume 1 card from the Draw pile
 
+evaluate which suits are currently present on the board
+
+if a suit has been completely eliminated from the board, it cannot be drawn
+
 choose one empty slot at random
 
 all empty slots have equal probability
@@ -364,13 +366,11 @@ So each non-King rank has:
 
 Suit selection is uniform:
 
-Spades: 25%
+Spades: 50%
 
-Clubs: 25%
+Diamonds: 50%
 
-Hearts: 25%
-
-Diamonds: 25%
+During Draw, suit output is filtered to only suits currently present on the board.
 
 ### 9.4 Joker Rule
 
