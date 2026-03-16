@@ -23,7 +23,7 @@
   --board-gap: clamp(4px, 0.75vmin, 8px);
   --frame-pad: clamp(10px, 1.6vmin, 16px);
   --app-pad-x: clamp(14px, 4vw, 28px);
-  --app-pad-y: clamp(12px, 2.6dvh, 24px);
+  --app-pad-y: clamp(10px, 2.2dvh, 20px);
   --chrome-reserve: clamp(220px, 34dvh, 320px);
 }
 
@@ -99,7 +99,6 @@ button {
   min-width: 0;
 }
 
-.hero__eyebrow,
 .endgame__eyebrow,
 .hero__pill-label {
   display: block;
@@ -111,7 +110,7 @@ button {
 }
 
 .hero__title {
-  margin: 4px 0 0;
+  margin: 0;
   font-family: "Cinzel", Georgia, serif;
   font-size: clamp(32px, 8vw, 48px);
   line-height: 0.98;
@@ -190,7 +189,7 @@ button {
 }
 
 .tableau__frame {
-  width: min(100%, 92vw, 620px, calc((100dvh - var(--chrome-reserve)) * 0.75));
+  width: min(100%, 96.6vw, 651px, calc((100dvh - var(--chrome-reserve)) * 0.7875));
   max-height: 100%;
   aspect-ratio: 3 / 4;
   padding: var(--frame-pad);
