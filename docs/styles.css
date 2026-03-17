@@ -267,9 +267,11 @@ button {
     inset 0 0 0 3px rgba(233, 205, 122, 0.36),
     0 10px 20px rgba(0, 0, 0, 0.16),
     0 0 26px rgba(226, 194, 96, 0.18);
+  animation: king-breathe 2.8s ease-in-out infinite;
 }
 
 .board-card--selected {
+  animation: none;
   transform: translateY(-2px);
   box-shadow:
     inset 0 0 0 1px rgba(133, 97, 16, 0.3),
@@ -291,6 +293,7 @@ button {
 }
 
 .board-card--dragging {
+  animation: none;
   transition: none;
   cursor: grabbing;
   pointer-events: none;
@@ -300,6 +303,49 @@ button {
     0 24px 34px rgba(0, 0, 0, 0.24),
     0 0 0 3px rgba(244, 217, 143, 0.22);
 }
+
+@keyframes target-pulse {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 0 1px rgba(33, 20, 7, 0.12),
+      inset 0 -10px 16px rgba(228, 215, 196, 0.24),
+      0 10px 20px rgba(0, 0, 0, 0.14),
+      inset 0 0 0 2px rgba(255, 224, 150, 0.12);
+  }
+
+  50% {
+    box-shadow:
+      inset 0 0 0 1px rgba(33, 20, 7, 0.12),
+      inset 0 -10px 16px rgba(228, 215, 196, 0.24),
+      0 10px 20px rgba(0, 0, 0, 0.14),
+      inset 0 0 0 2px rgba(255, 224, 150, 0.52),
+      0 0 10px rgba(255, 210, 120, 0.14);
+  }
+}
+
+.board-card--targetable {
+  animation: target-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes board-reject {
+  0% {
+    box-shadow: var(--shadow-strong);
+  }
+
+  25% {
+    box-shadow: var(--shadow-strong), inset 0 0 0 3px rgba(200, 40, 60, 0.26);
+  }
+
+  100% {
+    box-shadow: var(--shadow-strong);
+  }
+}
+
+.tableau__frame--reject {
+  animation: board-reject 420ms ease-out forwards;
+}
+
 
 .card-face__corner {
   position: absolute;
@@ -519,6 +565,25 @@ button {
   border-radius: 999px;
   background: radial-gradient(circle, rgba(255, 249, 224, 1), rgba(242, 214, 129, 0.2));
   box-shadow: 0 0 12px rgba(255, 237, 171, 0.65);
+}
+
+@keyframes king-breathe {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 0 1px rgba(133, 97, 16, 0.28),
+      inset 0 0 0 3px rgba(233, 205, 122, 0.36),
+      0 10px 20px rgba(0, 0, 0, 0.16),
+      0 0 16px rgba(226, 194, 96, 0.14);
+  }
+
+  50% {
+    box-shadow:
+      inset 0 0 0 1px rgba(133, 97, 16, 0.38),
+      inset 0 0 0 3px rgba(233, 205, 122, 0.54),
+      0 10px 20px rgba(0, 0, 0, 0.16),
+      0 0 32px rgba(226, 194, 96, 0.36);
+  }
 }
 
 @keyframes invalid-shake {
