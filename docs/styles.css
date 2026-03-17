@@ -549,6 +549,7 @@ button {
 
 @media (max-width: 760px) {
   :root {
+    --app-pad-x: clamp(7px, 2vw, 14px);
     --app-pad-y: clamp(8px, 1.8dvh, 14px);
     --chrome-reserve: clamp(170px, 32dvh, 230px);
   }
