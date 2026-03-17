@@ -5,7 +5,6 @@ const SNAP_OVERLAP_THRESHOLD = 0.66;
 const DRAG_START_THRESHOLD = 8;
 const KING_DOUBLE_TAP_WINDOW_MS = 360;
 const INVALID_FEEDBACK_MS = 360;
-const DEFAULT_MESSAGE = "Tap a card, then tap another card of the same color group.";
 const DRAW_RANDOM_SALT = 0x9e3779b9;
 
 const SUITS = ["S", "D"];
@@ -43,11 +42,9 @@ const CROWN_SVG = `
 `;
 
 const boardEl = document.getElementById("board");
-const statusEl = document.getElementById("statusMessage");
 const drawButtonEl = document.getElementById("drawButton");
 const drawCountEl = document.getElementById("drawCount");
 const restartButtonEl = document.getElementById("restartButton");
-const levelValueEl = document.getElementById("levelValue");
 const endgameOverlayEl = document.getElementById("endgameOverlay");
 const endgameEyebrowEl = document.getElementById("endgameEyebrow");
 const endgameTitleEl = document.getElementById("endgameTitle");
@@ -55,7 +52,6 @@ const endgameBodyEl = document.getElementById("endgameBody");
 const endgameActionButtonEl = document.getElementById("endgameActionButton");
 
 const state = {
-  levelNumber: 1,
   currentSeed: 0,
   levelSeed: null,
   drawPlacementRng: null,
@@ -68,7 +64,6 @@ const state = {
   lastKingTap: null,
   gameState: "playing",
   inputLocked: false,
-  messageText: DEFAULT_MESSAGE,
 };
 
 let invalidFeedbackTimerId = 0;
@@ -240,12 +235,11 @@ function nextRuntimeCardId(prefix = "runtime") {
   return id;
 }
 
-function loadLevelSeed(levelSeed, levelNumber) {
+function loadLevelSeed(levelSeed) {
   const snapshot = cloneLevelSeed(levelSeed);
   clearInvalidTarget(false);
   cleanupPointerState();
 
-  state.levelNumber = levelNumber;
   state.currentSeed = snapshot.seed;
   state.levelSeed = snapshot;
   state.nextCardSerial = snapshot.nextCardSerial;
@@ -265,22 +259,22 @@ function loadLevelSeed(levelSeed, levelNumber) {
   evaluateGameState();
 }
 
-function startLevel(levelNumber, seed = createRandomSeed()) {
-  loadLevelSeed(createLevelSeed(seed), levelNumber);
+function startGame(seed = createRandomSeed()) {
+  loadLevelSeed(createLevelSeed(seed));
 }
 
 function restartCurrentLevel() {
   if (state.inputLocked || !state.levelSeed) {
     return;
   }
-  loadLevelSeed(state.levelSeed, state.levelNumber);
+  loadLevelSeed(state.levelSeed);
 }
 
-function startNextLevel() {
+function startNextGame() {
   if (state.inputLocked) {
     return;
   }
-  startLevel(state.levelNumber + 1, createRandomSeed());
+  startGame(createRandomSeed());
 }
 
 function getCell(row, col) {
@@ -429,34 +423,12 @@ async function clearKingAt(row, col) {
 }
 
 function buildIdleMessage() {
-  if (state.selectedCell) {
-    const selectedCard = getCell(state.selectedCell.row, state.selectedCell.col);
-    if (selectedCard) {
-      return describeSelectionMessage(selectedCard);
-    }
-  }
-
-  if (state.drawPile.length === 0) {
-    return "Draw pile empty. Keep merging to clear the table.";
-  }
-
-  if (!hasAnyLegalMerge()) {
-    if (getEmptyCells().length > 0) {
-      return "No legal merges right now. Use Draw to fill an empty slot.";
-    }
-    return "No legal merges right now.";
-  }
-
-  return DEFAULT_MESSAGE;
+  return "";
 }
 
-function setMessage(text) {
-  state.messageText = text;
-  statusEl.textContent = text;
-}
+function setMessage(_text) {}
 
 function renderHud() {
-  levelValueEl.textContent = String(state.levelNumber);
   drawCountEl.textContent = String(state.drawPile.length);
   drawButtonEl.disabled = state.gameState !== "playing" || state.inputLocked;
   restartButtonEl.disabled = state.inputLocked;
@@ -582,9 +554,6 @@ function showInvalidTarget(position, message) {
 function clearSelection(options = {}) {
   const { preserveMessage = true, shouldRender = true } = options;
   state.selectedCell = null;
-  if (!preserveMessage) {
-    setMessage(buildIdleMessage());
-  }
   if (shouldRender) {
     renderBoard();
   }
@@ -874,8 +843,8 @@ function openEndgame(mode) {
   if (mode === "win") {
     endgameEyebrowEl.textContent = "Victory";
     endgameTitleEl.textContent = "Board Cleared";
-    endgameBodyEl.textContent = "You cleared the entire table. Ready for another randomized level?";
-    endgameActionButtonEl.textContent = "Next Level";
+    endgameBodyEl.textContent = "You cleared the entire table. Ready for another round?";
+    endgameActionButtonEl.textContent = "Play Again";
   } else {
     endgameEyebrowEl.textContent = "Stalemate";
     endgameTitleEl.textContent = "No More Legal Merges";
@@ -911,9 +880,6 @@ function evaluateGameState(options = {}) {
   state.gameState = "playing";
   closeEndgame();
   renderHud();
-  if (!preserveMessage) {
-    setMessage(buildIdleMessage());
-  }
   return "playing";
 }
 
@@ -1283,7 +1249,7 @@ function handleDocumentPointerDown(event) {
 
 function handleEndgameAction() {
   if (state.gameState === "win") {
-    startNextLevel();
+    startNextGame();
     return;
   }
   if (state.gameState === "lose") {
@@ -1304,4 +1270,4 @@ endgameActionButtonEl.addEventListener("click", handleEndgameAction);
 window.addEventListener("blur", handleBoardPointerCancel);
 window.addEventListener("resize", handleBoardPointerCancel);
 
-startLevel(1, createRandomSeed());
+startGame(createRandomSeed());

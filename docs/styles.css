@@ -24,7 +24,7 @@
   --frame-pad: clamp(10px, 1.6vmin, 16px);
   --app-pad-x: clamp(14px, 4vw, 28px);
   --app-pad-y: clamp(10px, 2.2dvh, 20px);
-  --chrome-reserve: clamp(220px, 34dvh, 320px);
+  --chrome-reserve: clamp(180px, 28dvh, 250px);
 }
 
 * {
@@ -99,8 +99,7 @@ button {
   min-width: 0;
 }
 
-.endgame__eyebrow,
-.hero__pill-label {
+.endgame__eyebrow {
   display: block;
   font-family: "Cinzel", Georgia, serif;
   font-size: 11px;
@@ -123,28 +122,7 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
   justify-content: flex-end;
-}
-
-.hero__pill {
-  border: 1px solid var(--panel-border);
-  background: linear-gradient(180deg, rgba(13, 34, 25, 0.72), rgba(8, 23, 17, 0.66));
-  box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(12px);
-  min-width: 72px;
-  padding: 7px 10px;
-  border-radius: 14px;
-  text-align: center;
-}
-
-.hero__pill-value {
-  display: block;
-  margin-top: 1px;
-  font-size: clamp(17px, 4.1vw, 23px);
-  font-weight: 800;
-  line-height: 1;
-  color: var(--gold-bright);
 }
 
 .chrome-button {
@@ -189,7 +167,7 @@ button {
 }
 
 .tableau__frame {
-  width: min(100%, 96.6vw, 651px, calc((100dvh - var(--chrome-reserve)) * 0.7875));
+  width: min(100%, 101.43vw, 684px, calc((100dvh - var(--chrome-reserve)) * 0.8269));
   max-height: 100%;
   aspect-ratio: 3 / 4;
   padding: var(--frame-pad);
@@ -381,17 +359,8 @@ button {
 
 .control-bar {
   display: flex;
+  justify-content: flex-end;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.status-line {
-  margin: 0;
-  font-size: clamp(14px, 2.8vw, 16px);
-  line-height: 1.35;
-  color: #fff7e7;
-  max-width: 62ch;
 }
 
 .draw-button {
@@ -462,6 +431,8 @@ button {
   font-weight: 800;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
 }
+
+
 
 .endgame {
   position: fixed;
@@ -579,7 +550,7 @@ button {
 @media (max-width: 760px) {
   :root {
     --app-pad-y: clamp(8px, 1.8dvh, 14px);
-    --chrome-reserve: clamp(210px, 38dvh, 300px);
+    --chrome-reserve: clamp(170px, 32dvh, 230px);
   }
 
   .app {
@@ -587,28 +558,12 @@ button {
   }
 
   .hero {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr auto;
     gap: 10px;
   }
 
   .hero__controls {
-    justify-content: space-between;
     gap: 6px;
-  }
-
-  .hero__pill {
-    min-width: 62px;
-    padding: 5px 8px;
-    border-radius: 12px;
-  }
-
-  .hero__pill-label {
-    font-size: 9px;
-    letter-spacing: 0.12em;
-  }
-
-  .hero__pill-value {
-    font-size: clamp(15px, 4.3vw, 18px);
   }
 
   .chrome-button {
@@ -622,29 +577,17 @@ button {
     font-size: clamp(24px, 8vw, 36px);
   }
 
-  .control-bar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-
   .draw-button {
-    width: 100%;
     min-height: 56px;
     padding: 8px 12px;
     gap: 8px;
-  }
-
-  .status-line {
-    font-size: 13px;
-    line-height: 1.25;
   }
 }
 
 @media (orientation: landscape) and (max-height: 720px) {
   :root {
     --app-pad-y: clamp(6px, 1.4dvh, 10px);
-    --chrome-reserve: clamp(150px, 28dvh, 220px);
+    --chrome-reserve: clamp(140px, 25dvh, 200px);
   }
 
   .app {
@@ -655,24 +598,10 @@ button {
     font-size: clamp(24px, 4.2vw, 34px);
   }
 
-  .hero__pill {
-    min-width: 64px;
-    padding: 5px 8px;
-  }
-
-  .hero__pill-value {
-    font-size: clamp(14px, 2.4vw, 17px);
-  }
-
   .chrome-button {
     min-height: 32px;
     padding: 0 10px;
     font-size: 13px;
-  }
-
-  .status-line {
-    font-size: 13px;
-    line-height: 1.2;
   }
 
   .draw-button {
@@ -684,21 +613,10 @@ button {
 
 @media (max-height: 620px) {
   :root {
-    --chrome-reserve: clamp(138px, 26dvh, 190px);
-  }
-
-  .hero__eyebrow,
-  .hero__pill-label {
-    font-size: 9px;
-    letter-spacing: 0.13em;
+    --chrome-reserve: clamp(132px, 22dvh, 180px);
   }
 
   .hero__title {
     font-size: clamp(20px, 6vw, 30px);
-  }
-
-  .status-line {
-    font-size: 12px;
-    line-height: 1.2;
   }
 }

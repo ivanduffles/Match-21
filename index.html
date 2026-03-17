@@ -14,11 +14,6 @@
         </div>
 
         <div class="hero__controls">
-          <div class="hero__pill" aria-label="Current level">
-            <span class="hero__pill-label">Level</span>
-            <span class="hero__pill-value" id="levelValue">1</span>
-          </div>
-
           <button class="chrome-button" id="restartButton" type="button">
             Restart
           </button>
@@ -32,10 +27,6 @@
       </section>
 
       <footer class="control-bar">
-        <p class="status-line" id="statusMessage" aria-live="polite">
-          Tap a card, then tap another card of the same color group.
-        </p>
-
         <button class="draw-button" id="drawButton" type="button" aria-label="Draw from pile">
           <span class="draw-button__stack" aria-hidden="true">
             <span></span>
@@ -60,7 +51,7 @@
         <h2 class="endgame__title" id="endgameTitle">Board Cleared</h2>
         <p class="endgame__body" id="endgameBody">You cleared the table.</p>
         <button class="chrome-button chrome-button--primary" id="endgameActionButton" type="button">
-          Next Level
+          Play Again
         </button>
       </section>
     </div>
