@@ -3,7 +3,6 @@ const DRAW_PILE_SIZE = 10;
 const KING_VALUE = 13;
 const SNAP_OVERLAP_THRESHOLD = 0.66;
 const DRAG_START_THRESHOLD = 8;
-const KING_DOUBLE_TAP_WINDOW_MS = 360;
 const INVALID_FEEDBACK_MS = 360;
 const DRAW_RANDOM_SALT = 0x9e3779b9;
 
@@ -61,7 +60,6 @@ const state = {
   selectedCell: null,
   invalidTarget: null,
   pointerState: null,
-  lastKingTap: null,
   gameState: "playing",
   inputLocked: false,
 };
@@ -249,7 +247,6 @@ function loadLevelSeed(levelSeed) {
   state.selectedCell = null;
   state.invalidTarget = null;
   state.pointerState = null;
-  state.lastKingTap = null;
   state.gameState = "playing";
   state.inputLocked = false;
 
@@ -281,15 +278,8 @@ function getCell(row, col) {
   return state.grid[row]?.[col] || null;
 }
 
-function isKing(card) {
-  return Boolean(card) && card.rankValue === KING_VALUE;
-}
-
 function canCardsMerge(cardA, cardB) {
   if (!cardA || !cardB || cardA.id === cardB.id) {
-    return false;
-  }
-  if (isKing(cardA) || isKing(cardB)) {
     return false;
   }
   return cardA.colorGroup === cardB.colorGroup;
@@ -343,26 +333,23 @@ function getEmptyCells() {
 }
 
 function hasAnyLegalMerge() {
-  let redNonKings = 0;
-  let blackNonKings = 0;
+  let redCards = 0;
+  let blackCards = 0;
 
   state.grid.forEach((row) => {
     row.forEach((card) => {
       if (!card) {
         return;
       }
-      if (isKing(card)) {
-        return;
-      }
       if (card.colorGroup === "red") {
-        redNonKings += 1;
+        redCards += 1;
       } else {
-        blackNonKings += 1;
+        blackCards += 1;
       }
     });
   });
 
-  return redNonKings >= 2 || blackNonKings >= 2;
+  return redCards >= 2 || blackCards >= 2;
 }
 
 function formatCard(card) {
@@ -370,56 +357,7 @@ function formatCard(card) {
 }
 
 function describeSelectionMessage(card) {
-  if (isKing(card)) {
-    return `${formatCard(card)} selected. Tap it again quickly to clear it.`;
-  }
   return `${formatCard(card)} selected. Pick another ${card.colorGroup} card.`;
-}
-
-function isSameCell(position, row, col) {
-  return Boolean(position) && position.row === row && position.col === col;
-}
-
-async function clearKingAt(row, col) {
-  const kingCard = getCell(row, col);
-  if (!isKing(kingCard)) {
-    return false;
-  }
-
-  const kingEl = getBoardCardElement(row, col);
-  const kingRect = kingEl?.getBoundingClientRect();
-
-  state.inputLocked = true;
-  renderHud();
-
-  try {
-    if (kingEl && kingRect) {
-      await Promise.all([
-        animateElement(
-          kingEl,
-          [
-            { transform: "scale(1)", opacity: 1 },
-            { transform: "scale(1.08)", opacity: 1 },
-            { transform: "scale(0.32)", opacity: 0 },
-          ],
-          {
-            duration: 280,
-            easing: "cubic-bezier(.2,.8,.2,1)",
-          }
-        ),
-        playSparkles(kingRect),
-      ]);
-    }
-  } finally {
-    setCell(row, col, null);
-    state.inputLocked = false;
-    renderBoard();
-    renderHud();
-  }
-
-  setMessage("Royal clear. King removed.");
-  evaluateGameState({ preserveMessage: true });
-  return true;
 }
 
 function buildIdleMessage() {
@@ -439,7 +377,7 @@ function createCardFaceMarkup(card) {
   const rankLabel = getRankLabel(card.rankValue);
   const suitColor = getSuitColorHex(card.suit);
   const suitSvg = SUIT_SVGS[card.suit]?.(suitColor) || "";
-  const crownMarkup = isKing(card)
+  const crownMarkup = card.rankValue === KING_VALUE
     ? `<span class="card-face__crown" aria-hidden="true">${CROWN_SVG}</span>`
     : "";
 
@@ -463,7 +401,7 @@ function buildCardElement(card, options = {}) {
   element.classList.add("playing-card", isFx ? "fx-card" : "board-card");
   element.classList.add(card.colorGroup === "red" ? "playing-card--red" : "playing-card--black");
 
-  if (isKing(card)) {
+  if (card.rankValue === KING_VALUE) {
     element.classList.add("playing-card--king");
   }
 
@@ -579,7 +517,7 @@ function positionFloatingCard(element, rect) {
 function updateFloatingCardFace(element, card) {
   element.classList.toggle("playing-card--red", card.colorGroup === "red");
   element.classList.toggle("playing-card--black", card.colorGroup === "black");
-  element.classList.toggle("playing-card--king", isKing(card));
+  element.classList.toggle("playing-card--king", card.rankValue === KING_VALUE);
   element.innerHTML = createCardFaceMarkup(card);
 }
 
@@ -637,7 +575,7 @@ async function playSparkles(targetRect) {
   );
 }
 
-async function playKingClearAnimation({ sourceFx, targetFx, sourceRect, targetRect }) {
+async function playPairClearAnimation({ sourceFx, targetFx, sourceRect, targetRect }) {
   const layer = ensureFxLayer();
   const centerX = targetRect.left + targetRect.width / 2;
   const centerY = targetRect.top + targetRect.height / 2;
@@ -690,7 +628,7 @@ async function playKingClearAnimation({ sourceFx, targetFx, sourceRect, targetRe
   burst.remove();
 }
 
-async function playMergeAnimation({ sourcePos, targetPos, sourceCard, targetCard, resultCard, isKingClear }) {
+async function playMergeAnimation({ sourcePos, targetPos, sourceCard, targetCard, resultCard, isPairClear }) {
   const sourceEl = getBoardCardElement(sourcePos.row, sourcePos.col);
   const targetEl = getBoardCardElement(targetPos.row, targetPos.col);
 
@@ -712,18 +650,14 @@ async function playMergeAnimation({ sourcePos, targetPos, sourceCard, targetCard
   targetEl.classList.add("board-card--ghost");
 
   try {
-    if (isKingClear) {
-      await playKingClearAnimation({ sourceFx, targetFx, sourceRect, targetRect });
+    if (isPairClear) {
+      await playPairClearAnimation({ sourceFx, targetFx, sourceRect, targetRect });
       return;
     }
 
     const stepValues = getRankTransitionValues(targetCard.rankValue, resultCard.rankValue);
     const travelX = targetRect.left - sourceRect.left;
     const travelY = targetRect.top - sourceRect.top;
-
-    if (resultCard.rankValue === KING_VALUE) {
-      targetFx.classList.add("fx-card--kinging");
-    }
 
     await Promise.all([
       animateElement(
@@ -774,10 +708,6 @@ async function playMergeAnimation({ sourcePos, targetPos, sourceCard, targetCard
       );
     }
 
-    if (resultCard.rankValue === KING_VALUE) {
-      await playSparkles(targetRect);
-    }
-
     await animateElement(
       targetFx,
       [
@@ -786,7 +716,7 @@ async function playMergeAnimation({ sourcePos, targetPos, sourceCard, targetCard
         { transform: "translate(0px, 0px) rotateY(360deg) scale(1)" },
       ],
       {
-        duration: resultCard.rankValue === KING_VALUE ? 520 : 430,
+        duration: 430,
         easing: "cubic-bezier(.22,.75,.28,1)",
       }
     );
@@ -951,8 +881,8 @@ async function resolveMerge(sourcePos, targetPos) {
   clearInvalidTarget(false);
   state.selectedCell = null;
 
-  const isKingClear = isKing(sourceCard) && isKing(targetCard);
-  const resultCard = isKingClear
+  const isPairClear = sourceCard.rankValue === targetCard.rankValue;
+  const resultCard = isPairClear
     ? null
     : createCard({
       id: nextRuntimeCardId("merge"),
@@ -969,11 +899,11 @@ async function resolveMerge(sourcePos, targetPos) {
     sourceCard,
     targetCard,
     resultCard,
-    isKingClear,
+    isPairClear,
   });
 
   setCell(sourcePos.row, sourcePos.col, null);
-  if (isKingClear) {
+  if (isPairClear) {
     setCell(targetPos.row, targetPos.col, null);
   } else {
     setCell(targetPos.row, targetPos.col, resultCard);
@@ -983,10 +913,8 @@ async function resolveMerge(sourcePos, targetPos) {
   renderBoard();
   renderHud();
 
-  if (isKingClear) {
-    setMessage("Royal clear. Both Kings are gone.");
-  } else if (resultCard.rankValue === KING_VALUE) {
-    setMessage(`A King of ${getSuitName(resultCard.suit)} rises.`);
+  if (isPairClear) {
+    setMessage(`Matched ${getRankName(sourceCard.rankValue)}s cleared.`);
   } else {
     setMessage(`${formatCard(sourceCard)} merged into ${formatCard(resultCard)}.`);
   }
@@ -1046,25 +974,6 @@ async function handleCardTap(row, col) {
   }
 
   const tappedCard = getCell(row, col);
-  const now = performance.now();
-  const tappedSameKingTwice =
-    isKing(tappedCard) &&
-    isSameCell(state.lastKingTap, row, col) &&
-    now - state.lastKingTap.time <= KING_DOUBLE_TAP_WINDOW_MS;
-
-  if (tappedSameKingTwice) {
-    state.lastKingTap = null;
-    clearSelection({ preserveMessage: true, shouldRender: false });
-    await clearKingAt(row, col);
-    return;
-  }
-
-  if (isKing(tappedCard)) {
-    state.lastKingTap = { row, col, time: now };
-  } else {
-    state.lastKingTap = null;
-  }
-
   if (!tappedCard) {
     if (state.selectedCell) {
       clearSelection({ preserveMessage: true, shouldRender: true });
@@ -1083,10 +992,6 @@ async function handleCardTap(row, col) {
   }
 
   if (state.selectedCell.row === row && state.selectedCell.col === col) {
-    if (isKing(tappedCard)) {
-      setMessage("Tap again quickly to clear this King.");
-      return;
-    }
     clearSelection({ preserveMessage: true, shouldRender: true });
     setMessage("Selection cleared.");
     return;
