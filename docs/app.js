@@ -50,6 +50,7 @@ const endgameEyebrowEl = document.getElementById("endgameEyebrow");
 const endgameTitleEl = document.getElementById("endgameTitle");
 const endgameBodyEl = document.getElementById("endgameBody");
 const endgameActionButtonEl = document.getElementById("endgameActionButton");
+const tableauFrameEl = document.querySelector(".tableau__frame");
 
 const state = {
   currentSeed: 0,
@@ -309,6 +310,11 @@ function getRankTransitionValues(startValue, endValue) {
       break;
     }
   }
+  // Cap displayed steps at 4 to prevent slow animations on long cyclical merges
+  // (e.g. Q+2=A passes through K). Always preserve the correct final value.
+  if (values.length > 4) {
+    return [...values.slice(0, 3), values[values.length - 1]];
+  }
   return values;
 }
 
@@ -340,6 +346,30 @@ function getEmptyCells() {
     }
   }
   return cells;
+}
+
+function highlightDragTargets(sourceRow, sourceCol) {
+  const sourceCard = getCell(sourceRow, sourceCol);
+  if (!sourceCard) {
+    return;
+  }
+  boardEl.querySelectorAll(".board-card").forEach((el) => {
+    const row = Number(el.dataset.row);
+    const col = Number(el.dataset.col);
+    if (row === sourceRow && col === sourceCol) {
+      return;
+    }
+    const card = getCell(row, col);
+    if (card && canCardsMerge(sourceCard, card)) {
+      el.classList.add("board-card--targetable");
+    }
+  });
+}
+
+function clearDragTargets() {
+  boardEl.querySelectorAll(".board-card--targetable").forEach((el) => {
+    el.classList.remove("board-card--targetable");
+  });
 }
 
 function hasAnyLegalMerge() {
@@ -544,6 +574,13 @@ function showInvalidTarget(position, message) {
   setMessage(message);
   renderBoard();
 
+  if (tableauFrameEl) {
+    tableauFrameEl.classList.remove("tableau__frame--reject");
+    void tableauFrameEl.offsetWidth; // force reflow so animation replays on rapid invalid moves
+    tableauFrameEl.classList.add("tableau__frame--reject");
+    window.setTimeout(() => tableauFrameEl.classList.remove("tableau__frame--reject"), 420);
+  }
+
   invalidFeedbackTimerId = window.setTimeout(() => {
     state.invalidTarget = null;
     invalidFeedbackTimerId = 0;
@@ -637,6 +674,38 @@ async function playSparkles(targetRect) {
   );
 }
 
+async function playMergeTrail(sourceRect, targetRect) {
+  const layer = ensureFxLayer();
+  const count = 4;
+
+  const animations = Array.from({ length: count }, (_, index) => {
+    const t = (index + 1) / (count + 1);
+    const x = sourceRect.left + (targetRect.left - sourceRect.left) * t + sourceRect.width / 2;
+    const y = sourceRect.top + (targetRect.top - sourceRect.top) * t + sourceRect.height / 2;
+    const dot = createSparkleElement(x, y);
+    dot.style.width = "6px";
+    dot.style.height = "6px";
+    dot.style.margin = "-3px 0 0 -3px";
+    layer.appendChild(dot);
+
+    return animateElement(
+      dot,
+      [
+        { opacity: 0, transform: "scale(0.2)" },
+        { opacity: 0.85, transform: "scale(1)" },
+        { opacity: 0, transform: "scale(0.15)" },
+      ],
+      {
+        duration: 260,
+        delay: index * 52,
+        easing: "ease-out",
+      }
+    ).finally(() => dot.remove());
+  });
+
+  await Promise.all(animations);
+}
+
 async function playKingClearAnimation({ sourceFx, targetFx, sourceRect, targetRect }) {
   const layer = ensureFxLayer();
   const centerX = targetRect.left + targetRect.width / 2;
@@ -726,6 +795,7 @@ async function playMergeAnimation({ sourcePos, targetPos, sourceCard, targetCard
     }
 
     await Promise.all([
+      playMergeTrail(sourceRect, targetRect),
       animateElement(
         sourceFx,
         [
@@ -839,6 +909,60 @@ async function playDrawAnimation(card, targetPos) {
   }
 }
 
+function flashSlot(row, col) {
+  const cellEl = getBoardCellElement(row, col);
+  if (!cellEl) {
+    return;
+  }
+  animateElement(
+    cellEl,
+    [
+      { background: "rgba(255, 224, 140, 0.32)" },
+      { background: "rgba(255, 224, 140, 0.0)" },
+    ],
+    {
+      duration: 600,
+      easing: "ease-out",
+    }
+  );
+}
+
+async function playWinSweep() {
+  const CENTER = { row: 3, col: 3 };
+  const cells = [];
+
+  for (let row = 0; row < GRID_SIZE; row += 1) {
+    for (let col = 0; col < GRID_SIZE; col += 1) {
+      const dist = Math.hypot(row - CENTER.row, col - CENTER.col);
+      cells.push({ el: getBoardCellElement(row, col), dist });
+    }
+  }
+
+  const maxDist = Math.max(...cells.map((c) => c.dist)) || 1;
+
+  await Promise.all(
+    cells.map(({ el, dist }) => {
+      if (!el) {
+        return Promise.resolve();
+      }
+      const delay = (dist / maxDist) * 380;
+      return animateElement(
+        el,
+        [
+          { background: "rgba(255, 230, 140, 0.0)" },
+          { background: "rgba(255, 230, 140, 0.42)" },
+          { background: "rgba(255, 230, 140, 0.0)" },
+        ],
+        {
+          duration: 500,
+          delay,
+          easing: "ease-in-out",
+        }
+      );
+    })
+  );
+}
+
 function openEndgame(mode) {
   if (mode === "win") {
     endgameEyebrowEl.textContent = "Victory";
@@ -858,21 +982,23 @@ function closeEndgame() {
   endgameOverlayEl.hidden = true;
 }
 
-function evaluateGameState(options = {}) {
+async function evaluateGameState(options = {}) {
   const { preserveMessage = false } = options;
 
   if (isBoardEmpty()) {
     state.gameState = "win";
-    openEndgame("win");
     renderHud();
+    await playWinSweep();
+    openEndgame("win");
     setMessage("The table is clear. You win.");
     return "win";
   }
 
   if (state.drawPile.length === 0 && !hasAnyLegalMerge()) {
     state.gameState = "lose";
+    renderHud(); // disables draw button immediately; input handlers also gate on gameState
+    await wait(420);
     openEndgame("lose");
-    renderHud();
     setMessage("The draw pile is empty and no legal merges remain.");
     return "lose";
   }
@@ -888,6 +1014,7 @@ function cleanupPointerState(pointerState = state.pointerState) {
     return;
   }
 
+  clearDragTargets();
   pointerState.cardEl?.classList.remove("board-card--dragging");
   if (pointerState.cardEl) {
     pointerState.cardEl.style.transform = "";
@@ -1035,6 +1162,7 @@ async function handleDraw() {
   state.inputLocked = false;
   renderBoard();
   renderHud();
+  flashSlot(targetPos.row, targetPos.col);
 
   setMessage(`${formatCard(card)} entered the board.`);
   evaluateGameState({ preserveMessage: true });
@@ -1202,6 +1330,7 @@ function handleBoardPointerMove(event) {
   if (!pointerState.dragging) {
     pointerState.dragging = true;
     pointerState.cardEl.classList.add("board-card--dragging");
+    highlightDragTargets(pointerState.row, pointerState.col);
   }
 
   const tilt = Math.max(-7, Math.min(7, deltaX * 0.06));
