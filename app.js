@@ -3,6 +3,7 @@ const DRAW_PILE_SIZE = 10;
 const KING_VALUE = 13;
 const SNAP_OVERLAP_THRESHOLD = 0.66;
 const DRAG_START_THRESHOLD = 8;
+const KING_DOUBLE_TAP_WINDOW_MS = 360;
 const INVALID_FEEDBACK_MS = 360;
 const DEFAULT_MESSAGE = "Tap a card, then tap another card of the same color group.";
 const DRAW_RANDOM_SALT = 0x9e3779b9;
@@ -64,6 +65,7 @@ const state = {
   selectedCell: null,
   invalidTarget: null,
   pointerState: null,
+  lastKingTap: null,
   gameState: "playing",
   inputLocked: false,
   messageText: DEFAULT_MESSAGE,
@@ -192,11 +194,7 @@ function setCell(row, col, card) {
 }
 
 function drawRandomRank(prng) {
-  const roll = prng();
-  if (roll < 0.02) {
-    return KING_VALUE;
-  }
-  return 1 + Math.floor(((roll - 0.02) / 0.98) * 12);
+  return 1 + Math.floor(prng() * 12);
 }
 
 function drawRandomSuit(prng) {
@@ -257,6 +255,7 @@ function loadLevelSeed(levelSeed, levelNumber) {
   state.selectedCell = null;
   state.invalidTarget = null;
   state.pointerState = null;
+  state.lastKingTap = null;
   state.gameState = "playing";
   state.inputLocked = false;
 
@@ -297,7 +296,7 @@ function canCardsMerge(cardA, cardB) {
     return false;
   }
   if (isKing(cardA) || isKing(cardB)) {
-    return isKing(cardA) && isKing(cardB);
+    return false;
   }
   return cardA.colorGroup === cardB.colorGroup;
 }
@@ -350,7 +349,6 @@ function getEmptyCells() {
 }
 
 function hasAnyLegalMerge() {
-  let kings = 0;
   let redNonKings = 0;
   let blackNonKings = 0;
 
@@ -360,7 +358,6 @@ function hasAnyLegalMerge() {
         return;
       }
       if (isKing(card)) {
-        kings += 1;
         return;
       }
       if (card.colorGroup === "red") {
@@ -371,7 +368,7 @@ function hasAnyLegalMerge() {
     });
   });
 
-  return kings >= 2 || redNonKings >= 2 || blackNonKings >= 2;
+  return redNonKings >= 2 || blackNonKings >= 2;
 }
 
 function formatCard(card) {
@@ -380,9 +377,55 @@ function formatCard(card) {
 
 function describeSelectionMessage(card) {
   if (isKing(card)) {
-    return `${formatCard(card)} selected. Pick another King, or tap again to cancel.`;
+    return `${formatCard(card)} selected. Tap it again quickly to clear it.`;
   }
   return `${formatCard(card)} selected. Pick another ${card.colorGroup} card.`;
+}
+
+function isSameCell(position, row, col) {
+  return Boolean(position) && position.row === row && position.col === col;
+}
+
+async function clearKingAt(row, col) {
+  const kingCard = getCell(row, col);
+  if (!isKing(kingCard)) {
+    return false;
+  }
+
+  const kingEl = getBoardCardElement(row, col);
+  const kingRect = kingEl?.getBoundingClientRect();
+
+  state.inputLocked = true;
+  renderHud();
+
+  try {
+    if (kingEl && kingRect) {
+      await Promise.all([
+        animateElement(
+          kingEl,
+          [
+            { transform: "scale(1)", opacity: 1 },
+            { transform: "scale(1.08)", opacity: 1 },
+            { transform: "scale(0.32)", opacity: 0 },
+          ],
+          {
+            duration: 280,
+            easing: "cubic-bezier(.2,.8,.2,1)",
+          }
+        ),
+        playSparkles(kingRect),
+      ]);
+    }
+  } finally {
+    setCell(row, col, null);
+    state.inputLocked = false;
+    renderBoard();
+    renderHud();
+  }
+
+  setMessage("Royal clear. King removed.");
+  evaluateGameState({ preserveMessage: true });
+  return true;
 }
 
 function buildIdleMessage() {
@@ -1037,6 +1080,25 @@ async function handleCardTap(row, col) {
   }
 
   const tappedCard = getCell(row, col);
+  const now = performance.now();
+  const tappedSameKingTwice =
+    isKing(tappedCard) &&
+    isSameCell(state.lastKingTap, row, col) &&
+    now - state.lastKingTap.time <= KING_DOUBLE_TAP_WINDOW_MS;
+
+  if (tappedSameKingTwice) {
+    state.lastKingTap = null;
+    clearSelection({ preserveMessage: true, shouldRender: false });
+    await clearKingAt(row, col);
+    return;
+  }
+
+  if (isKing(tappedCard)) {
+    state.lastKingTap = { row, col, time: now };
+  } else {
+    state.lastKingTap = null;
+  }
+
   if (!tappedCard) {
     if (state.selectedCell) {
       clearSelection({ preserveMessage: true, shouldRender: true });
@@ -1055,6 +1117,10 @@ async function handleCardTap(row, col) {
   }
 
   if (state.selectedCell.row === row && state.selectedCell.col === col) {
+    if (isKing(tappedCard)) {
+      setMessage("Tap again quickly to clear this King.");
+      return;
+    }
     clearSelection({ preserveMessage: true, shouldRender: true });
     setMessage("Selection cleared.");
     return;
