@@ -1,5 +1,6 @@
 const GRID_SIZE = 7;
 const DRAW_PILE_SIZE = 10;
+const SUBTRACT_CHARGES_PER_LEVEL = 5;
 const KING_VALUE = 13;
 const SNAP_OVERLAP_THRESHOLD = 0.66;
 const DRAG_START_THRESHOLD = 8;
@@ -43,6 +44,8 @@ const CROWN_SVG = `
 
 const boardEl = document.getElementById("board");
 const statusEl = document.getElementById("statusMessage");
+const subtractButtonEl = document.getElementById("subtractButton");
+const subtractCountEl = document.getElementById("subtractCount");
 const drawButtonEl = document.getElementById("drawButton");
 const drawCountEl = document.getElementById("drawCount");
 const restartButtonEl = document.getElementById("restartButton");
@@ -61,6 +64,8 @@ const state = {
   nextCardSerial: 0,
   grid: createEmptyGrid(),
   drawPile: [],
+  subtractCharges: SUBTRACT_CHARGES_PER_LEVEL,
+  subtractArmed: false,
   selectedCell: null,
   invalidTarget: null,
   pointerState: null,
@@ -254,6 +259,8 @@ function loadLevelSeed(levelSeed, levelNumber) {
   state.drawPlacementRng = mulberry32(deriveSeed(snapshot.seed, DRAW_RANDOM_SALT));
   state.grid = cloneGrid(snapshot.board);
   state.drawPile = snapshot.drawPile.map((card) => cloneCard(card));
+  state.subtractCharges = SUBTRACT_CHARGES_PER_LEVEL;
+  state.subtractArmed = false;
   state.selectedCell = null;
   state.invalidTarget = null;
   state.pointerState = null;
@@ -302,15 +309,21 @@ function canCardsMerge(cardA, cardB) {
   return cardA.colorGroup === cardB.colorGroup;
 }
 
-function getMergeResultRank(valueA, valueB) {
+function getAddMergeResultRank(valueA, valueB) {
   return ((valueA + valueB - 1) % KING_VALUE) + 1;
 }
 
-function getRankTransitionValues(startValue, endValue) {
+function getSubtractMergeResultRank(targetValue, sourceValue) {
+  return ((((targetValue - sourceValue - 1) % KING_VALUE) + KING_VALUE) % KING_VALUE) + 1;
+}
+
+function getRankTransitionValues(startValue, endValue, direction = 1) {
   const values = [];
   let current = startValue;
   while (true) {
-    current = (current % KING_VALUE) + 1;
+    current = direction >= 0
+      ? (current % KING_VALUE) + 1
+      : ((current + KING_VALUE - 2) % KING_VALUE) + 1;
     values.push(current);
     if (current === endValue || values.length > KING_VALUE) {
       break;
@@ -378,9 +391,23 @@ function formatCard(card) {
   return `${getRankName(card.rankValue)} of ${getSuitName(card.suit)}`;
 }
 
+function buildSubtractReadyMessage() {
+  return "Subtract armed. Pick a card, then merge into another card to subtract from it.";
+}
+
+function getSelectionClearedMessage() {
+  return state.subtractArmed ? "Selection cleared. Subtract is still armed." : "Selection cleared.";
+}
+
 function describeSelectionMessage(card) {
   if (isKing(card)) {
+    if (state.subtractArmed) {
+      return `${formatCard(card)} selected. Subtract is armed but will not affect a King clear. Pick another King, or tap again to cancel.`;
+    }
     return `${formatCard(card)} selected. Pick another King, or tap again to cancel.`;
+  }
+  if (state.subtractArmed) {
+    return `${formatCard(card)} selected. Subtract is armed. Pick another ${card.colorGroup} card.`;
   }
   return `${formatCard(card)} selected. Pick another ${card.colorGroup} card.`;
 }
@@ -391,6 +418,19 @@ function buildIdleMessage() {
     if (selectedCard) {
       return describeSelectionMessage(selectedCard);
     }
+  }
+
+  if (state.subtractArmed) {
+    if (!hasAnyLegalMerge()) {
+      if (state.drawPile.length === 0) {
+        return "Subtract armed. The draw pile is empty and no legal merges remain.";
+      }
+      if (getEmptyCells().length > 0) {
+        return "Subtract armed. No legal merges right now. Use Draw to fill an empty slot.";
+      }
+      return "Subtract armed. No legal merges right now.";
+    }
+    return buildSubtractReadyMessage();
   }
 
   if (state.drawPile.length === 0) {
@@ -414,9 +454,18 @@ function setMessage(text) {
 
 function renderHud() {
   levelValueEl.textContent = String(state.levelNumber);
+  subtractCountEl.textContent = String(state.subtractCharges);
   drawCountEl.textContent = String(state.drawPile.length);
+  subtractButtonEl.disabled =
+    state.gameState !== "playing" || state.inputLocked || state.subtractCharges === 0;
   drawButtonEl.disabled = state.gameState !== "playing" || state.inputLocked;
   restartButtonEl.disabled = state.inputLocked;
+  subtractButtonEl.classList.toggle("draw-button--armed", state.subtractArmed);
+  subtractButtonEl.setAttribute("aria-pressed", state.subtractArmed ? "true" : "false");
+  subtractButtonEl.setAttribute(
+    "aria-label",
+    `${state.subtractArmed ? "Cancel" : "Arm"} Subtract power-up. ${state.subtractCharges} remaining.`
+  );
   drawButtonEl.setAttribute("aria-label", `Draw card. ${state.drawPile.length} remaining.`);
 }
 
@@ -678,7 +727,15 @@ async function playKingClearAnimation({ sourceFx, targetFx, sourceRect, targetRe
   burst.remove();
 }
 
-async function playMergeAnimation({ sourcePos, targetPos, sourceCard, targetCard, resultCard, isKingClear }) {
+async function playMergeAnimation({
+  sourcePos,
+  targetPos,
+  sourceCard,
+  targetCard,
+  resultCard,
+  isKingClear,
+  transitionDirection = 1,
+}) {
   const sourceEl = getBoardCardElement(sourcePos.row, sourcePos.col);
   const targetEl = getBoardCardElement(targetPos.row, targetPos.col);
 
@@ -705,7 +762,11 @@ async function playMergeAnimation({ sourcePos, targetPos, sourceCard, targetCard
       return;
     }
 
-    const stepValues = getRankTransitionValues(targetCard.rankValue, resultCard.rankValue);
+    const stepValues = getRankTransitionValues(
+      targetCard.rankValue,
+      resultCard.rankValue,
+      transitionDirection
+    );
     const travelX = targetRect.left - sourceRect.left;
     const travelY = targetRect.top - sourceRect.top;
 
@@ -851,6 +912,7 @@ function evaluateGameState(options = {}) {
 
   if (isBoardEmpty()) {
     state.gameState = "win";
+    state.subtractArmed = false;
     openEndgame("win");
     renderHud();
     setMessage("The table is clear. You win.");
@@ -859,6 +921,7 @@ function evaluateGameState(options = {}) {
 
   if (state.drawPile.length === 0 && !hasAnyLegalMerge()) {
     state.gameState = "lose";
+    state.subtractArmed = false;
     openEndgame("lose");
     renderHud();
     setMessage("The draw pile is empty and no legal merges remain.");
@@ -943,11 +1006,15 @@ async function resolveMerge(sourcePos, targetPos) {
   state.selectedCell = null;
 
   const isKingClear = isKing(sourceCard) && isKing(targetCard);
+  const useSubtract =
+    state.subtractArmed && state.subtractCharges > 0 && !isKing(sourceCard) && !isKing(targetCard);
   const resultCard = isKingClear
     ? null
     : createCard({
       id: nextRuntimeCardId("merge"),
-      rankValue: getMergeResultRank(sourceCard.rankValue, targetCard.rankValue),
+      rankValue: useSubtract
+        ? getSubtractMergeResultRank(targetCard.rankValue, sourceCard.rankValue)
+        : getAddMergeResultRank(sourceCard.rankValue, targetCard.rankValue),
       suit: targetCard.suit,
     });
 
@@ -961,6 +1028,7 @@ async function resolveMerge(sourcePos, targetPos) {
     targetCard,
     resultCard,
     isKingClear,
+    transitionDirection: useSubtract ? -1 : 1,
   });
 
   setCell(sourcePos.row, sourcePos.col, null);
@@ -970,12 +1038,21 @@ async function resolveMerge(sourcePos, targetPos) {
     setCell(targetPos.row, targetPos.col, resultCard);
   }
 
+  if (useSubtract) {
+    state.subtractCharges = Math.max(0, state.subtractCharges - 1);
+    state.subtractArmed = false;
+  }
+
   state.inputLocked = false;
   renderBoard();
   renderHud();
 
   if (isKingClear) {
     setMessage("Royal clear. Both Kings are gone.");
+  } else if (useSubtract && resultCard.rankValue === KING_VALUE) {
+    setMessage(`Subtract forged a King of ${getSuitName(resultCard.suit)}.`);
+  } else if (useSubtract) {
+    setMessage(`${formatCard(sourceCard)} was subtracted from ${formatCard(targetCard)}, creating ${formatCard(resultCard)}.`);
   } else if (resultCard.rankValue === KING_VALUE) {
     setMessage(`A King of ${getSuitName(resultCard.suit)} rises.`);
   } else {
@@ -1031,6 +1108,16 @@ async function handleDraw() {
   evaluateGameState({ preserveMessage: true });
 }
 
+function handleSubtractToggle() {
+  if (state.gameState !== "playing" || state.inputLocked || state.subtractCharges === 0) {
+    return;
+  }
+
+  state.subtractArmed = !state.subtractArmed;
+  renderHud();
+  setMessage(state.subtractArmed ? buildSubtractReadyMessage() : buildIdleMessage());
+}
+
 async function handleCardTap(row, col) {
   if (state.gameState !== "playing" || state.inputLocked) {
     return;
@@ -1040,7 +1127,7 @@ async function handleCardTap(row, col) {
   if (!tappedCard) {
     if (state.selectedCell) {
       clearSelection({ preserveMessage: true, shouldRender: true });
-      setMessage("Selection cleared.");
+      setMessage(getSelectionClearedMessage());
     }
     return;
   }
@@ -1056,7 +1143,7 @@ async function handleCardTap(row, col) {
 
   if (state.selectedCell.row === row && state.selectedCell.col === col) {
     clearSelection({ preserveMessage: true, shouldRender: true });
-    setMessage("Selection cleared.");
+    setMessage(getSelectionClearedMessage());
     return;
   }
 
@@ -1121,7 +1208,7 @@ function handleBoardPointerDown(event) {
   if (!cardEl) {
     if (state.selectedCell) {
       clearSelection({ preserveMessage: true, shouldRender: true });
-      setMessage("Selection cleared.");
+      setMessage(getSelectionClearedMessage());
     }
     return;
   }
@@ -1212,7 +1299,7 @@ function handleDocumentPointerDown(event) {
   }
 
   clearSelection({ preserveMessage: true, shouldRender: true });
-  setMessage("Selection cleared.");
+  setMessage(getSelectionClearedMessage());
 }
 
 function handleEndgameAction() {
@@ -1231,6 +1318,7 @@ boardEl.addEventListener("pointerup", handleBoardPointerUp);
 boardEl.addEventListener("pointercancel", handleBoardPointerCancel);
 
 document.addEventListener("pointerdown", handleDocumentPointerDown);
+subtractButtonEl.addEventListener("click", handleSubtractToggle);
 drawButtonEl.addEventListener("click", handleDraw);
 restartButtonEl.addEventListener("click", restartCurrentLevel);
 endgameActionButtonEl.addEventListener("click", handleEndgameAction);

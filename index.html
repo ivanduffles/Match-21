@@ -36,15 +36,31 @@
           Tap a card, then tap another card of the same color group.
         </p>
 
-        <button class="draw-button" id="drawButton" type="button" aria-label="Draw from pile">
-          <span class="draw-button__stack" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
-          </span>
-          <span class="draw-button__text">Draw</span>
-          <span class="draw-button__count" id="drawCount">10</span>
-        </button>
+        <div class="control-bar__actions">
+          <button
+            class="draw-button draw-button--subtract"
+            id="subtractButton"
+            type="button"
+            aria-label="Arm Subtract power-up"
+            aria-pressed="false"
+          >
+            <span class="subtract-button__icon" aria-hidden="true">
+              <span></span>
+            </span>
+            <span class="draw-button__text">Subtract</span>
+            <span class="draw-button__count" id="subtractCount">5</span>
+          </button>
+
+          <button class="draw-button" id="drawButton" type="button" aria-label="Draw from pile">
+            <span class="draw-button__stack" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </span>
+            <span class="draw-button__text">Draw</span>
+            <span class="draw-button__count" id="drawCount">10</span>
+          </button>
+        </div>
       </footer>
     </main>
 
